@@ -117,20 +117,20 @@ namespace InstaGetter
                     var httpWebResponse2 = (HttpWebResponse) httpWebRequest2.GetResponse();
                     var streamReader3 = new StreamReader(httpWebResponse2.GetResponseStream());
                     var text = streamReader3.ReadToEnd();
-                    _token = JObject.Parse(text)["followed_by"]["page_info"]["end_cursor"]?.ToString();
-                    var rgx = Regex.Matches(text, "{\"username\": \"(.*?)\"}");
                     if (JObject.Parse(text)["followed_by"].Count() < 2)
                     {
                         Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                            (ThreadStart) delegate { lblStatus.Content = "Status : Error..."; });
+                            (ThreadStart)delegate { lblStatus.Content = "Status : Error..."; });
                         return;
                     }
+                    _token = JObject.Parse(text)["followed_by"]["page_info"]["end_cursor"]?.ToString();
+                    var rgx = Regex.Matches(text, "{\"username\": \"(.*?)\"}");
                     _hasNextPage = (bool) JObject.Parse(text)["followed_by"]["page_info"]["has_next_page"];
                     for (var i = 0; i < rgx.Count; i++)
                     {
                         var userr = rgx[i].Groups[1].Value;
                         _userCount--;
-                        using (var sw = File.AppendText(@"InstaGetter_Usernames.txt"))
+                        using (var sw = File.AppendText(Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt"))
                         {
                             sw.WriteLine(userr);
                             sw.Close();
@@ -211,7 +211,7 @@ namespace InstaGetter
             _cookie = cookietok;
             var streamReader3 = new StreamReader(httpWebResponse2.GetResponseStream());
             var text = streamReader3.ReadToEnd();
-            var flag = (bool) JObject.Parse(text)["authenticated"];
+            var flag = (bool) JObject.Parse(text)["authenticated"] && !text.Contains("reactivated");
             if (!flag)
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     (ThreadStart) delegate { lblStatus.Content = "Status : Account is invalid"; });
