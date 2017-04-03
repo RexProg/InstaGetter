@@ -1,0 +1,30 @@
+﻿<Controls:MetroWindow x:Class="InstaGetter.MainWindow"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                      xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                      xmlns:local="clr-namespace:InstaGetter"
+                      mc:Ignorable="d"
+                      Title="InstaGetter" Height="290" Width="200" ResizeMode="NoResize"
+                      WindowStartupLocation="CenterScreen" Closing="MetroWindow_Closing">
+    <Grid>
+        <Button x:Name="btnStart" Content="Start" HorizontalAlignment="Left" Margin="10,196,0,0"
+                VerticalAlignment="Top" Width="174" Click="btnStart_Click" />
+        <TextBox x:Name="txtPage" HorizontalAlignment="Left" Height="25" Margin="10,41,0,0" TextWrapping="Wrap"
+                 VerticalAlignment="Top" Width="174" />
+        <Label x:Name="lblPage" Content="Insta Page :" HorizontalAlignment="Left" Margin="10,10,0,0"
+               VerticalAlignment="Top" />
+        <TextBox x:Name="txtCount" HorizontalAlignment="Left" Height="25" Margin="10,103,0,0" TextWrapping="Wrap"
+                 VerticalAlignment="Top" Width="174" TextChanged="txtCount_TextChanged" />
+        <Label x:Name="lblCount" Content="Count :" HorizontalAlignment="Left" Margin="10,72,0,0"
+               VerticalAlignment="Top" />
+        <TextBox x:Name="txtAcc" HorizontalAlignment="Left" Height="25" Margin="10,165,0,0" TextWrapping="Wrap"
+                 VerticalAlignment="Top" Width="174" />
+        <Label x:Name="lblAcc" Content="Account :" HorizontalAlignment="Left" Margin="10,134,0,0"
+               VerticalAlignment="Top" />
+        <Label x:Name="lblStatus" Content="Status : " HorizontalAlignment="Left" Margin="10,228,0,0"
+               VerticalAlignment="Top" />
+
+    </Grid>
+</Controls:MetroWindow>
