@@ -146,14 +146,28 @@ namespace InstaGetter
                 {
 
                     Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 3 min"; });
-                    Thread.Sleep(240000);
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 4 min"; });
+                    Thread.Sleep(60000);
+                    Dispatcher.Invoke(DispatcherPriority.Normal,
+                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 3 min"; });
+                    Thread.Sleep(60000);
+                    Dispatcher.Invoke(DispatcherPriority.Normal,
+                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 2 min"; });
+                    Thread.Sleep(60000);
+                    Dispatcher.Invoke(DispatcherPriority.Normal,
+                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 1 min"; });
+                    Thread.Sleep(60000);
                     goto re;
                 }
                 if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.BadRequest)
                 {
                     Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                         (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
+                }
+                if (((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.NotFound)
+                {
+                    Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                        (ThreadStart)delegate { lblStatus.Content = "Status : Page Not Found"; });
                 }
             }
         }
@@ -207,6 +221,11 @@ namespace InstaGetter
         private void MetroWindow_Closing(object sender, CancelEventArgs e)
         {
             Environment.Exit(0);
+        }
+
+        private void btnAbout_Click(object sender, RoutedEventArgs e)
+        {
+            new About().Show();
         }
     }
 }

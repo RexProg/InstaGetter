@@ -9,7 +9,7 @@ using System.Windows;
 [assembly: AssemblyTitle("InstaGetter")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("RexProg")]
 [assembly: AssemblyProduct("InstaGetter")]
 [assembly: AssemblyCopyright("Copyright ©  2017")]
 [assembly: AssemblyTrademark("")]
