@@ -13,4 +13,4 @@ A tools to leach usernames of followers of special page
 - get instagram id without api
 - new method for Numberic textbox
 
-ThanksAvenger
+Thanks Avenger
