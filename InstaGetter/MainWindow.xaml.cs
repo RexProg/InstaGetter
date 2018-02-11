@@ -1,4 +1,6 @@
-﻿using System;
+﻿#region using
+
+using System;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -6,10 +8,13 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Web;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Newtonsoft.Json.Linq;
+
+#endregion
 
 namespace InstaGetter
 {
@@ -18,28 +23,41 @@ namespace InstaGetter
     /// </summary>
     public partial class MainWindow
     {
-        private readonly string _data =
-            "q=ig_user(258819714)+%7B%0A++followed_by.after(|O|%2C+20)+%7B%0A++++page_info+%7B%0A++++++end_cursor%2C%0A++++++has_next_page%0A++++%7D%2C%0A++++nodes+%7B%0A++++++username%0A++++%7D%0A++%7D%0A%7D%0A&ref=relationships%3A%3Afollow_list&query_id=17845270936146575";
-
-        private CookieContainer _cookie;
-        private bool _hasNextPage = true;
-
-        private string _token =
-            "AQA0pcvlYMUI4sPAyj6KLHo_VKyT3ogdR1UNYd6jY5PLRLmhyxeZ3FcrvoYD9bvRMj3rtKZGaP6ASr37leFh0Z6gzea_OiipWKdfOb0wVJhdCQ";
-
-        private int _userCount;
         private string _acc;
+        private CookieContainer _cookie;
+        private string _edge = "edge_followed_by";
+        private bool _hasNextPage = true;
+        private string _parameter = "{\"id\":\"XID\",\"first\":2500,\"after\":\"XTOK\"}";
+        private string _savePath = Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt";
+        private bool _started;
+        private int _swc = 1;
+
+        private string _token;
+
+        private string _url = "https://www.instagram.com/graphql/query/?query_id=17851374694183129&variables=";
+        private int _userCount;
 
         public MainWindow()
         {
             InitializeComponent();
         }
 
-        private void btnStart_Click(object sender, RoutedEventArgs e)
+        private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
-            int c = int.Parse(txtCount.Text);
-            string p = txtPage.Text;
-            string a = txtAcc.Text;
+            if (_started)
+            {
+                _started = false;
+                btnStart.Content = "Start";
+                return;
+            }
+
+            btnStart.Content = "Stop";
+            if (File.Exists(_savePath))
+                _savePath = GetUniqueFilePath(_savePath);
+            _started = true;
+            var c = int.Parse(txtCount.Text);
+            var p = txtPage.Text;
+            var a = txtAcc.Text;
             Dispatcher.BeginInvoke(
                 (ThreadStart)
                 delegate { new Thread(() => GetUserName(c, p, a)).Start(); });
@@ -51,16 +69,15 @@ namespace InstaGetter
             _hasNextPage = true;
             _userCount = count;
             _acc = user;
-            _token =
-                "#$$Instagram$$#";
+            _token = "";
             if (!Login())
                 return;
             Getter(page);
         }
 
-        private void txtCount_TextChanged(object sender, TextChangedEventArgs e)
+        private void TxtCount_TextChanged(object sender, TextChangedEventArgs e)
         {
-            if (!int.TryParse(((TextBox) sender).Text, out int a))
+            if (!int.TryParse(((TextBox) sender).Text, out var _))
                 ((TextBox) sender).Text = ((TextBox) sender).Text.Remove(e.Changes.ToList()[0].Offset,
                     e.Changes.ToList()[0].AddedLength);
         }
@@ -79,11 +96,10 @@ namespace InstaGetter
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36";
                 var httpWebResponse = (HttpWebResponse) httpWebRequest.GetResponse();
                 _cookie.Add(httpWebResponse.Cookies);
-                var streamReader2 = new StreamReader(httpWebResponse.GetResponseStream(),
+                var streamReader2 = new StreamReader(
+                    httpWebResponse.GetResponseStream() ?? throw new InvalidOperationException(),
                     Encoding.GetEncoding(httpWebResponse.CharacterSet));
                 var str = streamReader2.ReadToEnd();
-                var match = Regex.Match(str, "\"csrf_token\": \"(.*?)\"");
-                var token = match.Groups[1].ToString();
                 var id =
                     JObject.Parse(Regex.Match(str, "window._sharedData = (.*?);</script>").Groups[1].Value)["entry_data"
                     ]["ProfilePage"][0]["user"]["id"].ToString();
@@ -92,51 +108,27 @@ namespace InstaGetter
                     (ThreadStart) delegate { lblStatus.Content = "Status : Leaching..."; });
                 while (_userCount > 0 && _hasNextPage)
                 {
-                    byte[] bytes;
-                    if (_token == "#$$Instagram$$#")
-                        bytes =
-                            new ASCIIEncoding().GetBytes(_data.Replace(".after(|O|%2C+", ".first(")
-                                .Replace("258819714", id));
-                    else
-                        bytes = new ASCIIEncoding().GetBytes(_data.Replace("|O|", _token).Replace("258819714", id));
-                    var httpWebRequest2 = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/query/");
-                    httpWebRequest2.Headers.Add("X-CSRFToken", token);
-                    httpWebRequest2.Headers.Add("X-Instagram-AJAX", "1");
-                    httpWebRequest2.CookieContainer = _cookie;
-                    httpWebRequest2.Headers.Add("X-Requested-With", "XMLHttpRequest");
-                    httpWebRequest2.Method = "POST";
-                    httpWebRequest2.KeepAlive = true;
-                    httpWebRequest2.ContentType = "application/x-www-form-urlencoded";
-                    httpWebRequest2.Referer = "https://www.instagram.com/" + user;
-                    httpWebRequest2.UserAgent =
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0";
-                    httpWebRequest2.ContentLength = bytes.Length;
-                    var requestStream = httpWebRequest2.GetRequestStream();
-                    requestStream.Write(bytes, 0, bytes.Length);
-                    requestStream.Close();
-                    var httpWebResponse2 = (HttpWebResponse) httpWebRequest2.GetResponse();
-                    var streamReader3 = new StreamReader(httpWebResponse2.GetResponseStream());
-                    var text = streamReader3.ReadToEnd();
-                    if (JObject.Parse(text)["followed_by"].Count() < 2)
-                    {
-                        Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                            (ThreadStart)delegate { lblStatus.Content = "Status : Error..."; });
-                        return;
-                    }
-                    _token = JObject.Parse(text)["followed_by"]["page_info"]["end_cursor"]?.ToString();
-                    var rgx = Regex.Matches(text, "{\"username\": \"(.*?)\"}");
-                    _hasNextPage = (bool) JObject.Parse(text)["followed_by"]["page_info"]["has_next_page"];
-                    for (var i = 0; i < rgx.Count; i++)
-                    {
-                        var userr = rgx[i].Groups[1].Value;
-                        _userCount--;
-                        using (var sw = File.AppendText(Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt"))
-                        {
-                            sw.WriteLine(userr);
-                            sw.Close();
-                        }
-                    }
+                    var followRequest = (HttpWebRequest) WebRequest.Create(
+                        _url + HttpUtility.UrlEncode(_parameter).Replace("XID", id).Replace("XTOK", _token));
+                    followRequest.Headers.Add("X-Instagram-AJAX", "1");
+                    followRequest.CookieContainer = _cookie;
+                    followRequest.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                    followRequest.Method = "GET";
+                    var followResponse = (HttpWebResponse) followRequest.GetResponse();
+                    var streamReader = new StreamReader(followResponse.GetResponseStream());
+                    var text = streamReader.ReadToEnd();
+                    var edges = JObject.Parse(text)["data"]["user"][_edge]["edges"];
+                    _token = JObject.Parse(text)["data"]["user"][_edge]["page_info"]["end_cursor"]?.ToString();
+                    _hasNextPage = (bool) JObject.Parse(text)["data"]["user"][_edge]["page_info"]["has_next_page"];
+
+                    Dispatcher.BeginInvoke(
+                        (ThreadStart)
+                        delegate { new Thread(() => SaveEdges(edges)).Start(); });
+
+                    if (!_started)
+                        break;
                 }
+
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
             }
@@ -144,32 +136,70 @@ namespace InstaGetter
             {
                 if (((HttpWebResponse) e.Response).StatusCode.ToString() == "429")
                 {
-
                     Dispatcher.Invoke(DispatcherPriority.Normal,
                         (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 4 min"; });
                     Thread.Sleep(60000);
                     Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 3 min"; });
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 3 min"; });
                     Thread.Sleep(60000);
                     Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 2 min"; });
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 2 min"; });
                     Thread.Sleep(60000);
                     Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart)delegate { lblStatus.Content = "Status : Wait for 1 min"; });
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 1 min"; });
                     Thread.Sleep(60000);
                     goto re;
                 }
+
                 if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.BadRequest)
-                {
                     Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                         (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
-                }
-                if (((HttpWebResponse)e.Response).StatusCode == HttpStatusCode.NotFound)
-                {
+                if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.NotFound)
                     Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                        (ThreadStart)delegate { lblStatus.Content = "Status : Page Not Found"; });
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Page Not Found"; });
+            }
+        }
+
+        private void SaveEdges(JToken edges)
+        {
+            for (var i = 0; i < edges.Count(); i++)
+            {
+                var userr = edges[i]["node"]["username"].ToString();
+                _userCount--;
+                using (var sw = File.AppendText(_savePath))
+                {
+                    sw.WriteLine(userr);
+                    sw.Close();
                 }
             }
+        }
+
+        private string GetUniqueFilePath(string filepath)
+        {
+            if (File.Exists(filepath))
+            {
+                var folder = Path.GetDirectoryName(filepath);
+                var filename = Path.GetFileNameWithoutExtension(filepath);
+                var extension = Path.GetExtension(filepath);
+                var number = 1;
+
+                var regex = Regex.Match(filepath, @"(.+) \((\d+)\)\.\w+");
+
+                if (regex.Success)
+                {
+                    filename = regex.Groups[1].Value;
+                    number = int.Parse(regex.Groups[2].Value);
+                }
+
+                do
+                {
+                    number++;
+                    if (folder != null)
+                        filepath = Path.Combine(folder, string.Format("{0}_{1}{2}", filename, number, extension));
+                } while (File.Exists(filepath));
+            }
+
+            return filepath;
         }
 
         private bool Login()
@@ -182,36 +212,32 @@ namespace InstaGetter
             tokWebRequest.ContentType = "application/x-www-form-urlencoded";
             tokWebRequest.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0";
             var tokWebResponse = (HttpWebResponse) tokWebRequest.GetResponse();
-            var streamReader2 = new StreamReader(tokWebResponse.GetResponseStream(),
-                Encoding.GetEncoding(tokWebResponse.CharacterSet));
-            var str = streamReader2.ReadToEnd();
             cookietok.Add(tokWebResponse.Cookies);
-            var match = Regex.Match(str, "\"csrf_token\": \"(.*?)\"");
-            var token = match.Groups[1].ToString();
-
+            var token = tokWebResponse.Cookies.OfType<Cookie>().FirstOrDefault(c => c.Name == "csrftoken")?.Value;
             tokWebResponse.Close();
             var bytes =
                 new ASCIIEncoding().GetBytes("username=" + _acc.Split(':')[0] + "&password=" + _acc.Split(':')[1]);
-            var httpWebRequest2 = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/accounts/login/ajax/");
-            httpWebRequest2.CookieContainer = cookietok;
-            httpWebRequest2.Headers.Add("X-CSRFToken", token);
-            httpWebRequest2.Headers.Add("X-Instagram-AJAX", "1");
-            httpWebRequest2.Headers.Add("X-Requested-With", "XMLHttpRequest");
-            httpWebRequest2.Method = "POST";
-            httpWebRequest2.KeepAlive = true;
-            httpWebRequest2.ContentType = "application/x-www-form-urlencoded";
-            httpWebRequest2.Referer = "https://www.instagram.com/";
-            httpWebRequest2.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0";
-            httpWebRequest2.ContentLength = bytes.Length;
-            var requestStream = httpWebRequest2.GetRequestStream();
+            var loginRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/accounts/login/ajax/");
+            loginRequest.CookieContainer = cookietok;
+            loginRequest.Headers.Add("X-CSRFToken", token);
+            loginRequest.Headers.Add("X-Instagram-AJAX", "1");
+            loginRequest.Headers.Add("X-Requested-With", "XMLHttpRequest");
+            loginRequest.Method = "POST";
+            loginRequest.KeepAlive = true;
+            loginRequest.ContentType = "application/x-www-form-urlencoded";
+            loginRequest.Referer = "https://www.instagram.com/";
+            loginRequest.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0";
+            loginRequest.ContentLength = bytes.Length;
+            var requestStream = loginRequest.GetRequestStream();
             requestStream.Write(bytes, 0, bytes.Length);
             requestStream.Close();
-            var httpWebResponse2 = (HttpWebResponse) httpWebRequest2.GetResponse();
-            cookietok.Add(httpWebResponse2.Cookies);
+            var loginResponse = (HttpWebResponse) loginRequest.GetResponse();
+            cookietok.Add(loginResponse.Cookies);
             _cookie = cookietok;
-            var streamReader3 = new StreamReader(httpWebResponse2.GetResponseStream());
-            var text = streamReader3.ReadToEnd();
-            var flag = (bool) JObject.Parse(text)["authenticated"] && !text.Contains("reactivated");
+            var streamReader =
+                new StreamReader(loginResponse.GetResponseStream() ?? throw new InvalidOperationException());
+            var text = streamReader.ReadToEnd();
+            var flag = (bool) JObject.Parse(text)["authenticated"];
             if (!flag)
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     (ThreadStart) delegate { lblStatus.Content = "Status : Account is invalid"; });
@@ -223,9 +249,27 @@ namespace InstaGetter
             Environment.Exit(0);
         }
 
-        private void btnAbout_Click(object sender, RoutedEventArgs e)
+        private void BtnAbout_Click(object sender, RoutedEventArgs e)
         {
             new About().Show();
+        }
+
+        private void BtnSWC_Click(object sender, RoutedEventArgs e)
+        {
+            if (_swc == 1)
+            {
+                btnSWC.Content = "Following";
+                _swc = 2;
+                _url = "https://www.instagram.com/graphql/query/?query_id=17874545323001329&variables=";
+                _edge = "edge_follow";
+            }
+            else
+            {
+                btnSWC.Content = "Follower";
+                _swc = 1;
+                _url = "https://www.instagram.com/graphql/query/?query_id=17851374694183129&variables=";
+                _edge = "edge_followed_by";
+            }
         }
     }
 }

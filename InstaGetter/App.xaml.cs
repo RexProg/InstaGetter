@@ -1,4 +1,8 @@
-﻿using System.Windows;
+﻿#region using
+
+using System.Windows;
+
+#endregion
 
 namespace InstaGetter
 {

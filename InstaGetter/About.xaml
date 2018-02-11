@@ -1,19 +1,20 @@
 ﻿<controls:MetroWindow x:Class="InstaGetter.About"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:InstaGetter"
-        xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
-        mc:Ignorable="d"
-        Title="About us" Height="220" Width="300" ResizeMode="NoResize" WindowStartupLocation="CenterScreen" Icon="Resources/InstaGetter.ico">
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                      xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+                      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                      xmlns:local="clr-namespace:InstaGetter"
+                      xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+                      mc:Ignorable="d"
+                      Title="About us" Height="220" Width="300" ResizeMode="NoResize"
+                      WindowStartupLocation="CenterScreen" Icon="Resources/InstaGetter.ico">
     <Grid>
         <Image x:Name="image" HorizontalAlignment="Left" Height="120" Margin="10,10,0,0" VerticalAlignment="Top"
                Width="274" Source="Resources/cyberssst.png" MouseDown="image_MouseDown" />
-        <Label x:Name="label" Content="Programmer : Avenger &amp; RexProg" HorizontalAlignment="Center" Margin="10,135,10,6"
+        <Label x:Name="label" Content="Programmer : Avenger &amp; RexProg" HorizontalAlignment="Center"
+               Margin="10,135,10,6"
                VerticalAlignment="Center" Width="274" Foreground="White" HorizontalContentAlignment="Center"
-               FontFamily="Trebuchet MS" VerticalContentAlignment="Center" Height="45" FontSize="17"/>
+               FontFamily="Trebuchet MS" VerticalContentAlignment="Center" Height="45" FontSize="17" />
     </Grid>
 </controls:MetroWindow>
-
