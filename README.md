@@ -1,8 +1,8 @@
 # InstaGetter
-A tools to leach usernames of followers of special page
+A tools to gather usernames of followers of special page
 
 # Usage
-- Page is name of user you want to leach his followers
+- Page is name of user you want to gather his followers
 - Count is means how many username do you want
 - Account is a Instagram account such as "testInsta7203:testInsta123"
 
@@ -12,6 +12,9 @@ A tools to leach usernames of followers of special page
 - working without blocking or exception
 - get instagram id without api
 - new method for Numberic textbox
+- rename the file where the usernames are stored, if available
+- can stop gathering while gathering
+
 
 # Image
 ![edit-code](Image/InstaGetter.png)
