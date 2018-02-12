@@ -13,6 +13,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using Newtonsoft.Json.Linq;
+using RestSharp;
 
 #endregion
 
@@ -86,39 +87,33 @@ namespace InstaGetter
             re:
             try
             {
-                var httpWebRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/" + user + "/");
-                httpWebRequest.CookieContainer = _cookie;
-                httpWebRequest.Method = "GET";
-                httpWebRequest.KeepAlive = true;
-                httpWebRequest.ContentType = "application/x-www-form-urlencoded";
-                httpWebRequest.UserAgent =
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36";
-                var httpWebResponse = (HttpWebResponse) httpWebRequest.GetResponse();
-                _cookie.Add(httpWebResponse.Cookies);
-                var streamReader2 = new StreamReader(
-                    httpWebResponse.GetResponseStream() ?? throw new InvalidOperationException(),
-                    Encoding.GetEncoding(httpWebResponse.CharacterSet));
-                var str = streamReader2.ReadToEnd();
+                var client = new RestClient("https://www.instagram.com")
+                {
+                    CookieContainer = _cookie
+                };
+                var request = new RestRequest(user + "/", Method.GET);
+                var queryResult = client.Execute(request);
+                _cookie = client.CookieContainer;
                 var id =
-                    JObject.Parse(Regex.Match(str, "window._sharedData = (.*?);</script>").Groups[1].Value)["entry_data"
+                    JObject.Parse(Regex.Match(queryResult.Content, "window._sharedData = (.*?);</script>").Groups[1]
+                        .Value)["entry_data"
                     ]["ProfilePage"][0]["user"]["id"].ToString();
-                httpWebResponse.Close();
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                    (ThreadStart) delegate { lblStatus.Content = "Status : Leaching..."; });
+                    (ThreadStart) delegate { lblStatus.Content = "Status : Gathering..."; });
                 while (_userCount > 0 && _hasNextPage)
                 {
-                    var followRequest = (HttpWebRequest) WebRequest.Create(
-                        _url + HttpUtility.UrlEncode(_parameter).Replace("XID", id).Replace("XTOK", _token));
-                    followRequest.Headers.Add("X-Instagram-AJAX", "1");
-                    followRequest.CookieContainer = _cookie;
-                    followRequest.Headers.Add("X-Requested-With", "XMLHttpRequest");
-                    followRequest.Method = "GET";
-                    var followResponse = (HttpWebResponse) followRequest.GetResponse();
-                    var streamReader = new StreamReader(followResponse.GetResponseStream());
-                    var text = streamReader.ReadToEnd();
-                    var edges = JObject.Parse(text)["data"]["user"][_edge]["edges"];
-                    _token = JObject.Parse(text)["data"]["user"][_edge]["page_info"]["end_cursor"]?.ToString();
-                    _hasNextPage = (bool) JObject.Parse(text)["data"]["user"][_edge]["page_info"]["has_next_page"];
+                    var client2 =
+                        new RestClient(_url + HttpUtility.UrlEncode(_parameter).Replace("XID", id)
+                                           .Replace("XTOK", _token))
+                        {
+                            CookieContainer = _cookie
+                        };
+                    var request2 = new RestRequest(Method.GET);
+                    var queryResult2 = client2.Execute(request2).Content;
+                    var edges = JObject.Parse(queryResult2)["data"]["user"][_edge]["edges"];
+                    _token = JObject.Parse(queryResult2)["data"]["user"][_edge]["page_info"]["end_cursor"]?.ToString();
+                    _hasNextPage =
+                        (bool) JObject.Parse(queryResult2)["data"]["user"][_edge]["page_info"]["has_next_page"];
 
                     Dispatcher.BeginInvoke(
                         (ThreadStart)
@@ -164,18 +159,19 @@ namespace InstaGetter
 
         private void SaveEdges(JToken edges)
         {
-            for (var i = 0; i < edges.Count() && _userCount > 0; i++)
-                lock (_syncLock)
-                {
-                    var user = edges[i]["node"]["username"].ToString();
-                    using (var sw = File.AppendText(_savePath))
-                    {
-                        sw.WriteLine(user);
-                        sw.Close();
-                    }
+            //for (var i = 0; i < edges.Count() && _userCount > 0; i++)
+            lock (_syncLock)
+            {
+                //var user = edges[i]["node"]["username"].ToString();
+                File.AppendAllLines(_savePath, edges.Select(u => u["node"]["username"].ToString()));
+                //using (var sw = File.AppendText(_savePath))
+                //{
+                //    sw.WriteLine(user);
+                //    sw.Close();
+                //}
 
-                    _userCount--;
-                }
+                _userCount -= edges.Count();
+            }
         }
 
         private string GetUniqueFilePath(string filepath)
