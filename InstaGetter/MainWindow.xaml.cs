@@ -31,9 +31,8 @@ namespace InstaGetter
         private string _savePath = Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt";
         private bool _started;
         private int _swc = 1;
-
+        private object _syncLock = new object();
         private string _token;
-
         private string _url = "https://www.instagram.com/graphql/query/?query_id=17851374694183129&variables=";
         private int _userCount;
 
@@ -131,6 +130,9 @@ namespace InstaGetter
 
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
+                Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                    (ThreadStart) delegate { btnStart.Content = "Start"; });
+                _started = false;
             }
             catch (WebException e)
             {
@@ -162,16 +164,18 @@ namespace InstaGetter
 
         private void SaveEdges(JToken edges)
         {
-            for (var i = 0; i < edges.Count(); i++)
-            {
-                var userr = edges[i]["node"]["username"].ToString();
-                _userCount--;
-                using (var sw = File.AppendText(_savePath))
+            for (var i = 0; i < edges.Count() && _userCount > 0; i++)
+                lock (_syncLock)
                 {
-                    sw.WriteLine(userr);
-                    sw.Close();
+                    var user = edges[i]["node"]["username"].ToString();
+                    using (var sw = File.AppendText(_savePath))
+                    {
+                        sw.WriteLine(user);
+                        sw.Close();
+                    }
+
+                    _userCount--;
                 }
-            }
         }
 
         private string GetUniqueFilePath(string filepath)
