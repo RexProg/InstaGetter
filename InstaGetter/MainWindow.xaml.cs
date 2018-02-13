@@ -32,6 +32,7 @@ namespace InstaGetter
         private string _savePath = Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt";
         private bool _started;
         private int _swc = 1;
+        private int _error = 0;
         private object _syncLock = new object();
         private string _token;
         private string _url = "https://www.instagram.com/graphql/query/?query_id=17851374694183129&variables=";
@@ -57,7 +58,7 @@ namespace InstaGetter
             _started = true;
             var c = int.Parse(txtCount.Text);
             var p = txtPage.Text;
-            var a = txtAcc.Text;
+            var a = txtUserAcc.Text + ":" + txtPassAcc.Text;
             Dispatcher.BeginInvoke(
                 (ThreadStart)
                 delegate { new Thread(() => GetUserName(c, p, a)).Start(); });
@@ -102,6 +103,7 @@ namespace InstaGetter
                     (ThreadStart) delegate { lblStatus.Content = "Status : Gathering..."; });
                 while (_userCount > 0 && _hasNextPage)
                 {
+                    re2:
                     var client2 =
                         new RestClient(_url + HttpUtility.UrlEncode(_parameter).Replace("XID", id)
                                            .Replace("XTOK", _token))
@@ -110,6 +112,19 @@ namespace InstaGetter
                         };
                     var request2 = new RestRequest(Method.GET);
                     var queryResult2 = client2.Execute(request2).Content;
+                    if (string.IsNullOrEmpty(queryResult2))
+                    {
+                        if(_error == 3)
+                        {
+                            Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                                (ThreadStart)delegate { lblStatus.Content = "Status : Check Internet Connection!";  btnStart.Content = "Start"; });
+                            _started = false;
+                        }
+                        _error++;
+                        goto re2;
+                    }
+
+                    _error = 0;
                     var edges = JObject.Parse(queryResult2)["data"]["user"][_edge]["edges"];
                     _token = JObject.Parse(queryResult2)["data"]["user"][_edge]["page_info"]["end_cursor"]?.ToString();
                     _hasNextPage =
@@ -119,14 +134,13 @@ namespace InstaGetter
                         (ThreadStart)
                         delegate { new Thread(() => SaveEdges(edges)).Start(); });
 
+                    _userCount -= edges.Count();
                     if (!_started)
                         break;
                 }
 
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                    (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
-                Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                    (ThreadStart) delegate { btnStart.Content = "Start"; });
+                    (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; btnStart.Content = "Start"; });
                 _started = false;
             }
             catch (WebException e)
@@ -159,18 +173,9 @@ namespace InstaGetter
 
         private void SaveEdges(JToken edges)
         {
-            //for (var i = 0; i < edges.Count() && _userCount > 0; i++)
             lock (_syncLock)
             {
-                //var user = edges[i]["node"]["username"].ToString();
                 File.AppendAllLines(_savePath, edges.Select(u => u["node"]["username"].ToString()));
-                //using (var sw = File.AppendText(_savePath))
-                //{
-                //    sw.WriteLine(user);
-                //    sw.Close();
-                //}
-
-                _userCount -= edges.Count();
             }
         }
 
@@ -195,7 +200,7 @@ namespace InstaGetter
                 {
                     number++;
                     if (folder != null)
-                        filepath = Path.Combine(folder, string.Format("{0}_{1}{2}", filename, number, extension));
+                        filepath = Path.Combine(folder, $"{filename}_{number}{extension}");
                 } while (File.Exists(filepath));
             }
 
