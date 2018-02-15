@@ -2,6 +2,7 @@
 
 using System;
 using System.ComponentModel;
+using System.Windows.Media;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -11,6 +12,7 @@ using System.Threading;
 using System.Web;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Newtonsoft.Json.Linq;
 using RestSharp;
@@ -27,12 +29,12 @@ namespace InstaGetter
         private string _acc;
         private CookieContainer _cookie;
         private string _edge = "edge_followed_by";
+        private int _error;
         private bool _hasNextPage = true;
         private string _parameter = "{\"id\":\"XID\",\"first\":2500,\"after\":\"XTOK\"}";
         private string _savePath = Environment.CurrentDirectory + @"\InstaGetter_Usernames.txt";
         private bool _started;
         private int _swc = 1;
-        private int _error = 0;
         private object _syncLock = new object();
         private string _token;
         private string _url = "https://www.instagram.com/graphql/query/?query_id=17851374694183129&variables=";
@@ -45,13 +47,18 @@ namespace InstaGetter
 
         private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
+            if (string.IsNullOrEmpty(txtUserAcc.Text) && string.IsNullOrEmpty(txtPassAcc.Text) &&
+                string.IsNullOrEmpty(txtCount.Text) && string.IsNullOrEmpty(txtPage.Text))
+            {
+                lblStatus.Content = "Status : Fill in the empty fields";
+                return;
+            }
             if (_started)
             {
                 _started = false;
                 btnStart.Content = "Start";
                 return;
             }
-
             btnStart.Content = "Stop";
             if (File.Exists(_savePath))
                 _savePath = GetUniqueFilePath(_savePath);
@@ -114,12 +121,17 @@ namespace InstaGetter
                     var queryResult2 = client2.Execute(request2).Content;
                     if (string.IsNullOrEmpty(queryResult2))
                     {
-                        if(_error == 3)
+                        if (_error == 3)
                         {
                             Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                                (ThreadStart)delegate { lblStatus.Content = "Status : Check Internet Connection!";  btnStart.Content = "Start"; });
+                                (ThreadStart) delegate
+                                {
+                                    lblStatus.Content = "Status : Check Internet Connection!";
+                                    btnStart.Content = "Start";
+                                });
                             _started = false;
                         }
+
                         _error++;
                         goto re2;
                     }
@@ -140,7 +152,11 @@ namespace InstaGetter
                 }
 
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                    (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; btnStart.Content = "Start"; });
+                    (ThreadStart) delegate
+                    {
+                        lblStatus.Content = "Status : Finished";
+                        btnStart.Content = "Start";
+                    });
                 _started = false;
             }
             catch (WebException e)
@@ -209,44 +225,65 @@ namespace InstaGetter
 
         private bool Login()
         {
-            var cookietok = new CookieContainer();
-            var tokWebRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/");
-            tokWebRequest.CookieContainer = cookietok;
-            tokWebRequest.Method = "GET";
-            tokWebRequest.KeepAlive = true;
-            tokWebRequest.ContentType = "application/x-www-form-urlencoded";
-            tokWebRequest.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0";
-            var tokWebResponse = (HttpWebResponse) tokWebRequest.GetResponse();
-            cookietok.Add(tokWebResponse.Cookies);
-            var token = tokWebResponse.Cookies.OfType<Cookie>().FirstOrDefault(c => c.Name == "csrftoken")?.Value;
-            tokWebResponse.Close();
-            var bytes =
-                new ASCIIEncoding().GetBytes("username=" + _acc.Split(':')[0] + "&password=" + _acc.Split(':')[1]);
-            var loginRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/accounts/login/ajax/");
-            loginRequest.CookieContainer = cookietok;
-            loginRequest.Headers.Add("X-CSRFToken", token);
-            loginRequest.Headers.Add("X-Instagram-AJAX", "1");
-            loginRequest.Headers.Add("X-Requested-With", "XMLHttpRequest");
-            loginRequest.Method = "POST";
-            loginRequest.KeepAlive = true;
-            loginRequest.ContentType = "application/x-www-form-urlencoded";
-            loginRequest.Referer = "https://www.instagram.com/";
-            loginRequest.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0";
-            loginRequest.ContentLength = bytes.Length;
-            var requestStream = loginRequest.GetRequestStream();
-            requestStream.Write(bytes, 0, bytes.Length);
-            requestStream.Close();
-            var loginResponse = (HttpWebResponse) loginRequest.GetResponse();
-            cookietok.Add(loginResponse.Cookies);
-            _cookie = cookietok;
-            var streamReader =
-                new StreamReader(loginResponse.GetResponseStream() ?? throw new InvalidOperationException());
-            var text = streamReader.ReadToEnd();
-            var flag = (bool) JObject.Parse(text)["authenticated"];
-            if (!flag)
+            try
+            {
+                var cookietok = new CookieContainer();
+                var tokWebRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/");
+                tokWebRequest.CookieContainer = cookietok;
+                tokWebRequest.Method = "GET";
+                tokWebRequest.KeepAlive = true;
+                tokWebRequest.ContentType = "application/x-www-form-urlencoded";
+                tokWebRequest.UserAgent =
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:49.0) Gecko/20100101 Firefox/49.0";
+                var tokWebResponse = (HttpWebResponse) tokWebRequest.GetResponse();
+                cookietok.Add(tokWebResponse.Cookies);
+                var token = tokWebResponse.Cookies.OfType<Cookie>().FirstOrDefault(c => c.Name == "csrftoken")?.Value;
+                tokWebResponse.Close();
+                var bytes =
+                    new ASCIIEncoding().GetBytes("username=" + _acc.Split(':')[0] + "&password=" + _acc.Split(':')[1]);
+                var loginRequest = (HttpWebRequest) WebRequest.Create("https://www.instagram.com/accounts/login/ajax/");
+                loginRequest.CookieContainer = cookietok;
+                loginRequest.Headers.Add("X-CSRFToken", token);
+                loginRequest.Headers.Add("X-Instagram-AJAX", "1");
+                loginRequest.Headers.Add("X-Requested-With", "XMLHttpRequest");
+                loginRequest.Method = "POST";
+                loginRequest.KeepAlive = true;
+                loginRequest.ContentType = "application/x-www-form-urlencoded";
+                loginRequest.Referer = "https://www.instagram.com/";
+                loginRequest.UserAgent =
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:58.0) Gecko/20100101 Firefox/58.0";
+                loginRequest.ContentLength = bytes.Length;
+                var requestStream = loginRequest.GetRequestStream();
+                requestStream.Write(bytes, 0, bytes.Length);
+                requestStream.Close();
+                var loginResponse = (HttpWebResponse) loginRequest.GetResponse();
+                cookietok.Add(loginResponse.Cookies);
+                _cookie = cookietok;
+                var streamReader =
+                    new StreamReader(loginResponse.GetResponseStream() ?? throw new InvalidOperationException());
+                var text = streamReader.ReadToEnd();
+                var flag = (bool) JObject.Parse(text)["authenticated"];
+                if (!flag)
+                    Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                        (ThreadStart) delegate { lblStatus.Content = "Status : Account is invalid"; });
+                return flag;
+            }
+            catch (WebException e)
+            {
+                if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.BadRequest)
+                    Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                        (ThreadStart) delegate
+                        {
+                            lblStatus.Content = "Status : check your account in your browser or deactive two step verification";
+                        });
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                    (ThreadStart) delegate { lblStatus.Content = "Status : Account is invalid"; });
-            return flag;
+                    (ThreadStart)delegate
+                    {
+                        btnStart.Content = "Start";
+                    });
+                _started = false;
+                return false;
+            }
         }
 
         private void MetroWindow_Closing(object sender, CancelEventArgs e)
