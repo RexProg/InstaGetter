@@ -101,6 +101,14 @@ namespace InstaGetter
                 };
                 var request = new RestRequest(user + "/", Method.GET);
                 var queryResult = client.Execute(request);
+                if (queryResult.Content.Contains(@"<h2>Sorry, this page isn&#39;t available.</h2>"))
+                {
+                    Dispatcher.BeginInvoke(DispatcherPriority.Normal,
+                        (ThreadStart)delegate { lblStatus.Content = "Status : Page Not Found"; });
+                    _started = false;
+                    return;
+                }
+
                 _cookie = client.CookieContainer;
                 var id =
                     JObject.Parse(Regex.Match(queryResult.Content, "window._sharedData = (.*?);</script>").Groups[1]
@@ -130,6 +138,7 @@ namespace InstaGetter
                                     btnStart.Content = "Start";
                                 });
                             _started = false;
+                            return;
                         }
 
                         _error++;
@@ -159,31 +168,10 @@ namespace InstaGetter
                     });
                 _started = false;
             }
-            catch (WebException e)
+            catch (Exception e)
             {
-                if (((HttpWebResponse) e.Response).StatusCode.ToString() == "429")
-                {
-                    Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 4 min"; });
-                    Thread.Sleep(60000);
-                    Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 3 min"; });
-                    Thread.Sleep(60000);
-                    Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 2 min"; });
-                    Thread.Sleep(60000);
-                    Dispatcher.Invoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Wait for 1 min"; });
-                    Thread.Sleep(60000);
-                    goto re;
-                }
-
-                if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.BadRequest)
                     Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Finished"; });
-                if (((HttpWebResponse) e.Response).StatusCode == HttpStatusCode.NotFound)
-                    Dispatcher.BeginInvoke(DispatcherPriority.Normal,
-                        (ThreadStart) delegate { lblStatus.Content = "Status : Page Not Found"; });
+                        (ThreadStart) delegate { lblStatus.Content = "Error : " + e.Message; });
             }
         }
 
