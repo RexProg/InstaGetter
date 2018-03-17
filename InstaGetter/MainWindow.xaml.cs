@@ -112,8 +112,7 @@ namespace InstaGetter
                 _cookie = client.CookieContainer;
                 var id =
                     JObject.Parse(Regex.Match(queryResult.Content, "window._sharedData = (.*?);</script>").Groups[1]
-                        .Value)["entry_data"
-                    ]["ProfilePage"][0]["user"]["id"].ToString();
+                        .Value)["entry_data"]["ProfilePage"][0]["graphql"]["user"]["id"].ToString();
                 Dispatcher.BeginInvoke(DispatcherPriority.Normal,
                     (ThreadStart) delegate { lblStatus.Content = "Status : Gathering..."; });
                 while (_userCount > 0 && _hasNextPage)
